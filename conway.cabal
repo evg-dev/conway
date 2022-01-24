@@ -7,10 +7,10 @@ cabal-version: 1.12
 name:           conway
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/conway#readme>
-homepage:       https://github.com/githubuser/conway#readme
-bug-reports:    https://github.com/githubuser/conway/issues
+homepage:       https://github.com/evg-dev/conway#readme
+bug-reports:    https://github.com/evg-dev/conway/issues
 author:         evg-dev
-maintainer:     evg-dev
+maintainer:     evg.dev
 copyright:      evg-dev
 license:        BSD3
 license-file:   LICENSE
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/conway
+  location: https://github.com/evg-dev/conway
 
 library
   exposed-modules:

@@ -63,6 +63,10 @@ waitInput w grid hw ww generation is_cycle is_next c_x c_y = do
                | (event ==  Just (EventCharacter ' ')) && (is_cycle == False) = do -- manual next
                    loop w grid hw ww (generation + 1) False True c_x c_y
 
+               | (event ==  Just (EventCharacter 'n')) && (is_cycle == False) = do -- new game
+                   let clear_grid = cellInitEmptyList (toInt(hw - 2), toInt(ww - 2))
+                   loop w clear_grid hw ww (generation) False False c_x c_y
+
                | (event ==  Just (EventSpecialKey KeyLeftArrow)) && (is_cycle == False) = do -- Left
                    let nc_x = getRangeCursorCoord ww (c_x - 1)
                    loop w grid hw ww (generation) False False nc_x c_y
@@ -97,16 +101,18 @@ renderMenu  hw ww g
         moveCursor 4   10
         drawString "#########################################"
         moveCursor 5   10
-        drawString "# p - Pause/Resume                      #"
-        moveCursor 6   10
         drawString "# q - Exit                              #"
+        moveCursor 6   10
+        drawString "# p - Pause/Resume                      #"
         moveCursor 7   10
-        drawString "# SPACE - Manual next step on pause     #"
+        drawString "# n - new game                          #"
         moveCursor 8   10
         drawString "# ↑ - UP, ← - LEFT, → - RIGHT, ↓ - DOWN #"
         moveCursor 9   10
         drawString "# ENTER - change cell state             #"
         moveCursor 10   10
+        drawString "# SPACE - next step on pause            #"
+        moveCursor 11   10
         drawString "#########################################"
     | otherwise = do moveCursor 0 0
 
@@ -184,6 +190,9 @@ countNeighbours  ix iy g =
 -- init example square 2 * 2
 cellInitList :: (Int, Int) -> [[Char]]
 cellInitList (x, y) = [[ if (h <= 7 && w <= 2) && (h >= 6 && w >= 1) then isLive else isDead | h <- [1..y]] | w <- [1..x]]
+
+cellInitEmptyList :: (Int, Int) -> [[Char]]
+cellInitEmptyList (x, y) = [[ isDead | h <- [1..y]] | w <- [1..x]]
 
 
 cellList :: [[Char]] -> [[Char]]

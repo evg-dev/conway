@@ -79,8 +79,8 @@ waitInput w grid hw ww generation is_cycle is_next c_x c_y = do
                    let nc_y = getRangeCursorCoord hw (c_y - 1)
                    loop w grid hw ww (generation) False False c_x nc_y
 
-               | (event ==  Just (EventSpecialKey KeyEnter)) && (is_cycle == False) = do -- Enter
-                   let replaced_grid = replaceCursorCell c_x c_y grid
+               | (event ==  Just (EventCharacter '\n')) && (is_cycle == False) = do -- Enter
+                   let replaced_grid = replaceCursorCell c_x c_y grid              -- set cell state
                    loop w replaced_grid hw ww (generation) False False c_x c_y
 
                | is_cycle == False = do                                            -- no cycle, no events - stop
@@ -115,9 +115,9 @@ renderCursor :: Integer -> Integer -> Integer -> Bool -> [[Char]] -> Update ()
 renderCursor c_x c_y generation is_cycle g
     | (generation > 0) && (is_cycle == False) = do
         moveCursor c_y c_x
-        let s = if g!!(toInt c_x - 1)!!(toInt c_y - 1) == isLive then "X" else "@"
+        let s = if g!!(toInt c_y - 1)!!(toInt c_x - 1) == isLive then "X" else "@"
         drawString s
-    | otherwise = do moveCursor c_y c_x
+    | otherwise = return ()
 
 
 toInt :: Integer -> Int
@@ -130,8 +130,15 @@ getRangeCursorCoord mc c
     | otherwise = c
 
 
+replace p f xs = [ if i == p then f x else x | (x, i) <- zip xs [0..] ]
+replace2D v (x,y) = replace y (replace x (const v))
+
+
 replaceCursorCell :: Integer -> Integer -> [[Char]] -> [[Char]]
-replaceCursorCell c_x c_y grid = grid
+replaceCursorCell c_x c_y g =
+    let c = if g!!(toInt c_y - 1)!!(toInt c_x - 1) == isLive then isDead else isLive
+    in replace2D c (c_x - 1, c_y - 1) g
+
 
 renderBorder :: Integer -> Integer -> Update ()
 renderBorder  hw ww = do
@@ -163,20 +170,20 @@ newGrid False g = g
 
 countNeighbours :: Int -> Int -> [[Char]] -> Int
 countNeighbours  ix iy g =
-    let n = [ g!!y!!x | x <- [ix-1, ix, ix+1],
-                                y <- [iy-1, iy, iy+1],
-                                x < (length $ g!!0),
-                                x >= 0,
-                                y < length g,
-                                y >= 0,
-                                let z = iy == y && ix == x, -- exclude same cell
-                                z == False ]
+    let n = [ g!!x!!y | x <- [ix-1, ix, ix+1],
+                x < length g,
+                x >= 0,
+                y <- [iy-1, iy, iy+1],
+                y < (length $ g!!0),
+                y >= 0,
+                let z = iy == y && ix == x, -- exclude same cell
+                z == False ]
     in length $ filter(==isLive) n
 
 
--- init glider
+-- init example square 2 * 2
 cellInitList :: (Int, Int) -> [[Char]]
-cellInitList (x, y) = [[ if (h <= 7 && w <= 7) && (h >= 4 && w >= 4) then isLive else isDead | h <- [1..y]] | w <- [1..x]]
+cellInitList (x, y) = [[ if (h <= 7 && w <= 2) && (h >= 6 && w >= 1) then isLive else isDead | h <- [1..y]] | w <- [1..x]]
 
 
 cellList :: [[Char]] -> [[Char]]
@@ -184,7 +191,7 @@ cellList g = map (\(w,x) -> map (\(h,y) -> isLiveCell w h g) $ zip [0..] x)  $ z
 
 
 isLiveCell :: Int -> Int -> [[Char]] -> Char
-isLiveCell x y g
+isLiveCell x y g -- = countNeighbours $ x y g
     | isCurrentLive == isDead = if n == 3 then isLive else isDead
     | isCurrentLive == isLive = if n == 2 || n == 3 then isLive else isDead
     | otherwise = isDead

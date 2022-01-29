@@ -25,12 +25,14 @@ game = runCurses $ do
     w <- defaultWindow
     let с = 0                -- screenSize return Integer, convert to Int
         grid = cellInitList (fromInteger(hw - 2)::Int, fromInteger(ww - 2)::Int) -- init grid, size exclude border
-    loop w grid hw ww с False False
+        c_x = 1 -- cursor x
+        c_y = 1 -- cursor y
+    loop w grid hw ww с False False c_x c_y
 
 
 -- main game loop
-loop :: Window -> [[Char]] -> Integer -> Integer ->  Integer -> Bool -> Bool -> Curses ()
-loop w grid hw ww generation is_cycle is_next = do
+loop :: Window -> [[Char]] -> Integer -> Integer ->  Integer -> Bool -> Bool -> Integer ->  Integer -> Curses ()
+loop w grid hw ww generation is_cycle is_next c_x c_y = do
     greenAndBlack <- newColorID ColorGreen ColorBlack 1 -- create color
 
     let nGreed = newGrid is_next grid
@@ -38,33 +40,89 @@ loop w grid hw ww generation is_cycle is_next = do
         setColor greenAndBlack
         renderBorder hw ww
         renderGrid hw ww nGreed
+        renderMenu hw ww generation
+        renderCursor c_x c_y
     render
 
-    waitInput w nGreed hw ww generation is_cycle is_next
+    waitInput w nGreed hw ww generation is_cycle is_next c_x c_y
 
 
-waitInput :: Window -> [[Char]] -> Integer -> Integer ->  Integer -> Bool -> Bool -> Curses ()
-waitInput w grid hw ww generation is_cycle is_next = do
+waitInput :: Window -> [[Char]] -> Integer -> Integer ->  Integer -> Bool -> Bool -> Integer -> Integer -> Curses ()
+waitInput w grid hw ww generation is_cycle is_next c_x c_y = do
     let current_delay = getDelay is_cycle
     event <- getEvent w current_delay -- set delay for next step or await keypress
     let action | (event ==  Just (EventCharacter 'q')) = do                        -- exit
                     return ()
 
                | (event ==  Just (EventCharacter 'p')) && (is_cycle == True) = do -- pause
-                   loop w grid hw ww (generation) False True
+                   loop w grid hw ww (generation) False True c_x c_y
 
                | (event ==  Just (EventCharacter 'p')) && (is_cycle == False) = do -- resume auto
-                   loop w grid hw ww (generation + 1) True True
+                   loop w grid hw ww (generation + 1) True True c_x c_y
 
-               | (event ==  Just (EventCharacter 'n')) && (is_cycle == False) = do -- manual next
-                   loop w grid hw ww (generation + 1) False True
+               | (event ==  Just (EventCharacter ' ')) && (is_cycle == False) = do -- manual next
+                   loop w grid hw ww (generation + 1) False True c_x c_y
+
+               | (event ==  Just (EventSpecialKey KeyLeftArrow)) && (is_cycle == False) = do -- Left
+                   let nc_x = getRangeCursorCoord ww (c_x - 1)
+                   loop w grid hw ww (generation) False False nc_x c_y
+
+               | (event ==  Just (EventSpecialKey KeyRightArrow)) && (is_cycle == False) = do -- Right
+                let nc_x = getRangeCursorCoord ww (c_x + 1)
+                loop w grid hw ww (generation) False False nc_x c_y
+
+               | (event ==  Just (EventSpecialKey KeyDownArrow)) && (is_cycle == False) = do -- Down
+                   let nc_y = getRangeCursorCoord hw (c_y + 1)
+                   loop w grid hw ww (generation) False False c_x nc_y
+
+               | (event ==  Just (EventSpecialKey KeyUpArrow)) && (is_cycle == False) = do -- Up
+                   let nc_y = getRangeCursorCoord hw (c_y - 1)
+                   loop w grid hw ww (generation) False False c_x nc_y
+
+               | (event ==  Just (EventSpecialKey KeyEnter)) && (is_cycle == False) = do -- Enter
+                   loop w grid hw ww (generation) False False c_x c_y
 
                | is_cycle == False = do                                            -- no cycle, no events - stop
-                   loop w grid hw ww (generation) False False
+                   loop w grid hw ww (generation) False False c_x c_y
 
                | otherwise = do                                                    -- timeout, next step auto
-                   loop w grid hw ww (generation + 1) True True
+                   loop w grid hw ww (generation + 1) True True c_x c_y
     action
+
+
+renderMenu :: Integer -> Integer -> Integer -> Update ()
+renderMenu  hw ww g
+    | g == 0 = do
+        moveCursor 4   10
+        drawString "#########################################"
+        moveCursor 5   10
+        drawString "# p - Pause/Resume                      #"
+        moveCursor 6   10
+        drawString "# q - Exit                              #"
+        moveCursor 7   10
+        drawString "# SPACE - Manual next step on pause     #"
+        moveCursor 8   10
+        drawString "# ↑ - UP, ← - LEFT, → - RIGHT, ↓ - DOWN #"
+        moveCursor 9   10
+        drawString "# ENTER - change cell state             #"
+        moveCursor 10   10
+        drawString "#########################################"
+    | otherwise = do moveCursor 0 0
+
+
+renderCursor :: Integer -> Integer -> Update ()
+renderCursor c_x c_y = do
+        moveCursor c_y c_x
+        drawString "@"
+
+
+
+getRangeCursorCoord :: Integer -> Integer -> Integer
+getRangeCursorCoord mc c
+    | c < 1 = 1
+    | c > (mc - 2) = (mc - 2)
+    | otherwise = c
+
 
 
 renderBorder :: Integer -> Integer -> Update ()

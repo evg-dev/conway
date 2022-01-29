@@ -24,7 +24,7 @@ game = runCurses $ do
     setCursorMode CursorInvisible -- hide cursor
     w <- defaultWindow
     let с = 0                -- screenSize return Integer, convert to Int
-        grid = cellInitList (fromInteger(hw - 2)::Int, fromInteger(ww - 2)::Int) -- init grid, size exclude border
+        grid = cellInitList (toInt(hw - 2), toInt(ww - 2)) -- init grid, size exclude border
         c_x = 1 -- cursor x
         c_y = 1 -- cursor y
     loop w grid hw ww с False False c_x c_y
@@ -41,7 +41,7 @@ loop w grid hw ww generation is_cycle is_next c_x c_y = do
         renderBorder hw ww
         renderGrid hw ww nGreed
         renderMenu hw ww generation
-        renderCursor c_x c_y
+        renderCursor c_x c_y generation is_cycle nGreed
     render
 
     waitInput w nGreed hw ww generation is_cycle is_next c_x c_y
@@ -80,7 +80,8 @@ waitInput w grid hw ww generation is_cycle is_next c_x c_y = do
                    loop w grid hw ww (generation) False False c_x nc_y
 
                | (event ==  Just (EventSpecialKey KeyEnter)) && (is_cycle == False) = do -- Enter
-                   loop w grid hw ww (generation) False False c_x c_y
+                   let replaced_grid = replaceCursorCell c_x c_y grid
+                   loop w replaced_grid hw ww (generation) False False c_x c_y
 
                | is_cycle == False = do                                            -- no cycle, no events - stop
                    loop w grid hw ww (generation) False False c_x c_y
@@ -92,7 +93,7 @@ waitInput w grid hw ww generation is_cycle is_next c_x c_y = do
 
 renderMenu :: Integer -> Integer -> Integer -> Update ()
 renderMenu  hw ww g
-    | g == 0 = do
+    | (g == 0) = do
         moveCursor 4   10
         drawString "#########################################"
         moveCursor 5   10
@@ -110,12 +111,17 @@ renderMenu  hw ww g
     | otherwise = do moveCursor 0 0
 
 
-renderCursor :: Integer -> Integer -> Update ()
-renderCursor c_x c_y = do
+renderCursor :: Integer -> Integer -> Integer -> Bool -> [[Char]] -> Update ()
+renderCursor c_x c_y generation is_cycle g
+    | (generation > 0) && (is_cycle == False) = do
         moveCursor c_y c_x
-        drawString "@"
+        let s = if g!!(toInt c_x - 1)!!(toInt c_y - 1) == isLive then "X" else "@"
+        drawString s
+    | otherwise = do moveCursor c_y c_x
 
 
+toInt :: Integer -> Int
+toInt x = fromInteger(x)::Int
 
 getRangeCursorCoord :: Integer -> Integer -> Integer
 getRangeCursorCoord mc c
@@ -124,6 +130,8 @@ getRangeCursorCoord mc c
     | otherwise = c
 
 
+replaceCursorCell :: Integer -> Integer -> [[Char]] -> [[Char]]
+replaceCursorCell c_x c_y grid = grid
 
 renderBorder :: Integer -> Integer -> Update ()
 renderBorder  hw ww = do
